@@ -4,7 +4,7 @@
         const $ = id => document.getElementById(id);
         const stage = $("stage");
 
-        // ---------------- geometry helpers (overlap-clipped fills) ----------------
+        // ---------------- geometry helpers (hole-punched fills) ----------------
         // hidden svg used purely to measure path bounding boxes off-screen
         const measureSVG = document.createElementNS(SVGNS, "svg");
         measureSVG.setAttribute("width", "0"); measureSVG.setAttribute("height", "0");
@@ -20,10 +20,14 @@
         function bboxOverlap(a, b) {
             return !(a.x + a.width < b.x || b.x + b.width < a.x || a.y + a.height < b.y || b.y + b.height < a.y);
         }
-        // for each path, the list of other paths whose bounding box intersects it
-        function computeOverlapNeighbors(paths) {
+        // for each path, the list of paths drawn *on top of it* (later in stacking
+        // order) whose bounding box overlaps it — those toppers punch a hole in
+        // this path's fill, whether or not the topper itself is filled. So a small
+        // shape sitting inside a big one keeps the big shape's color out of its
+        // area until the small shape gets its own fill turned on.
+        function computeToppers(paths) {
             const boxes = paths.map(p => getPathBBox(p.d));
-            return paths.map((p, i) => paths.filter((q, j) => j !== i && bboxOverlap(boxes[i], boxes[j])));
+            return paths.map((p, i) => paths.filter((q, j) => j > i && bboxOverlap(boxes[i], boxes[j])));
         }
 
         // ---------------- state ----------------
@@ -48,7 +52,7 @@
         const uid = () => "p" + (S.idc++);
 
         // ---------------- persistent svg layers ----------------
-        let elPaper, elGrid, elImg, elArt, elOverlay, elClipDefs, gridPattern;
+        let elPaper, elGrid, elImg, elArt, elOverlay, elMaskDefs, gridPattern;
         function buildStage() {
             stage.innerHTML = "";
             const defs = document.createElementNS(SVGNS, "defs");
@@ -65,7 +69,7 @@
             elPaper = rect(0, 0, S.canvasW, S.canvasH, "var(--paper)"); elPaper.setAttribute("class", "paper"); stage.appendChild(elPaper);
             elGrid = rect(0, 0, S.canvasW, S.canvasH, "url(#grid)"); stage.appendChild(elGrid);
             elImg = document.createElementNS(SVGNS, "image"); elImg.setAttribute("x", "0"); elImg.setAttribute("y", "0"); stage.appendChild(elImg);
-            elClipDefs = document.createElementNS(SVGNS, "defs"); stage.appendChild(elClipDefs);
+            elMaskDefs = document.createElementNS(SVGNS, "defs"); stage.appendChild(elMaskDefs);
             elArt = document.createElementNS(SVGNS, "g"); stage.appendChild(elArt);
             elOverlay = document.createElementNS(SVGNS, "g"); stage.appendChild(elOverlay);
             applyImg(); applyView();
@@ -169,32 +173,39 @@
         // ---------------- rendering ----------------
         function renderArt() {
             elArt.innerHTML = "";
-            elClipDefs.innerHTML = "";
-            const neighborsByPath = computeOverlapNeighbors(S.paths);
+            elMaskDefs.innerHTML = "";
+            const toppersByPath = computeToppers(S.paths);
             S.paths.forEach((p, i) => {
                 const hasFill = p.fill && p.fill !== "none";
-                const neighbors = neighborsByPath[i];
+                const toppers = toppersByPath[i];
 
-                // fill layer — clipped to the overlap with any touching shape, so a
-                // shape connecting two others only shows color in the shared region
+                // fill layer — any shape drawn on top of this one punches a hole in
+                // its fill (regardless of whether that shape has fill itself), so a
+                // small shape sitting inside a bigger filled one stays uncolored
+                // until you turn its own fill on
                 if (hasFill) {
                     const fillEl = document.createElementNS(SVGNS, "path");
                     fillEl.setAttribute("d", p.d);
                     fillEl.setAttribute("fill", p.fill);
                     fillEl.setAttribute("stroke", "none");
                     fillEl.setAttribute("pointer-events", "none");
-                    if (neighbors.length) {
-                        const clipId = "clip-" + p.id;
-                        const clip = document.createElementNS(SVGNS, "clipPath");
-                        clip.setAttribute("id", clipId);
-                        clip.setAttribute("clipPathUnits", "userSpaceOnUse");
-                        for (const n of neighbors) {
-                            const cp = document.createElementNS(SVGNS, "path");
-                            cp.setAttribute("d", n.d);
-                            clip.appendChild(cp);
+                    if (toppers.length) {
+                        const maskId = "mask-" + p.id;
+                        const mask = document.createElementNS(SVGNS, "mask");
+                        mask.setAttribute("id", maskId);
+                        mask.setAttribute("maskUnits", "userSpaceOnUse");
+                        const base = document.createElementNS(SVGNS, "path");
+                        base.setAttribute("d", p.d);
+                        base.setAttribute("fill", "white");
+                        mask.appendChild(base);
+                        for (const t of toppers) {
+                            const hole = document.createElementNS(SVGNS, "path");
+                            hole.setAttribute("d", t.d);
+                            hole.setAttribute("fill", "black");
+                            mask.appendChild(hole);
                         }
-                        elClipDefs.appendChild(clip);
-                        fillEl.setAttribute("clip-path", `url(#${clipId})`);
+                        elMaskDefs.appendChild(mask);
+                        fillEl.setAttribute("mask", `url(#${maskId})`);
                     }
                     elArt.appendChild(fillEl);
                 }
@@ -616,21 +627,22 @@
         // ---------------- export ----------------
         function buildSVG() {
             const W = S.canvasW, H = S.canvasH;
-            const neighborsByPath = computeOverlapNeighbors(S.paths);
+            const toppersByPath = computeToppers(S.paths);
             let defsBody = "", body = "";
             S.paths.forEach((p, i) => {
                 const hasFill = p.fill && p.fill !== "none";
-                const neighbors = neighborsByPath[i];
-                let clipId = null;
+                const toppers = toppersByPath[i];
+                let maskId = null;
 
-                if (hasFill && neighbors.length) {
-                    clipId = "clip-" + p.id;
-                    defsBody += `\n    <clipPath id="${clipId}" clipPathUnits="userSpaceOnUse">` +
-                        neighbors.map(n => `<path d="${n.d}"/>`).join("") +
-                        `</clipPath>`;
+                if (hasFill && toppers.length) {
+                    maskId = "mask-" + p.id;
+                    defsBody += `\n    <mask id="${maskId}" maskUnits="userSpaceOnUse">` +
+                        `<path d="${p.d}" fill="white"/>` +
+                        toppers.map(t => `<path d="${t.d}" fill="black"/>`).join("") +
+                        `</mask>`;
                 }
                 if (hasFill) {
-                    body += `\n  <path d="${p.d}" fill="${p.fill}"${clipId ? ` clip-path="url(#${clipId})"` : ""}/>`;
+                    body += `\n  <path d="${p.d}" fill="${p.fill}"${maskId ? ` mask="url(#${maskId})"` : ""}/>`;
                 }
                 if (p.stroke && p.stroke !== "none") {
                     const attrs = [
