@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Traceboard — image to SVG</title>
+    <meta name="description" content="Trace an image into clean vector paths with a pen and pencil tool, right in the browser, and export it as SVG.">
+    <meta name="theme-color" content="#16181f">
+    <meta property="og:title" content="Traceboard — image to SVG">
+    <meta property="og:description" content="Trace an image into clean vector paths and export it as SVG.">
+    <meta property="og:type" content="website">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Traceboard">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">
+                <svg width="16" height="16" viewBox="0 0 100 100">
+                    <path d="M 50 20 C 32 20 20 34 20 53 C 20 72 32 86 50 86 L 50 20 Z" fill="currentColor" />
+                    <path d="M 50 20 C 68 20 80 34 80 53 C 80 72 68 86 50 86" fill="none" stroke="currentColor"
+                        stroke-width="7" stroke-linecap="round" stroke-dasharray="12 10" />
+                    <circle cx="50" cy="20" r="9" fill="#ffb24a" />
+                </svg>
+            </div>
+            <span class="name">Trace<b>board</b></span>
+        </div>
+        <div class="divider"></div>
+        <div class="topgroup">
+            <button class="btn" id="uploadBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+                    <path d="M12 4v11" />
+                    <path d="m7 9 5-5 5 5" />
+                </svg>
+                Upload image
+            </button>
+            <button class="btn" id="autoBtn" title="Automatically vectorize the whole image (needs internet)">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 3v4M3 5h4M6 17v4M4 19h4" />
+                    <path d="M13 4 20 11l-9 9-7-7 9-9z" />
+                </svg>
+                Auto-trace
+            </button>
+        </div>
+        <div class="spacer"></div>
+        <div class="topgroup">
+            <button class="btn icon ghost" id="undoBtn" title="Undo (Ctrl+Z)">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 14 4 9l5-5" />
+                    <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+                </svg>
+            </button>
+            <div class="divider"></div>
+            <button class="btn" id="copyBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+                </svg>
+                Copy SVG
+            </button>
+            <button class="btn primary" id="exportBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 9v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9" />
+                    <path d="M12 15V4" />
+                    <path d="m7 10 5 5 5-5" />
+                </svg>
+                Export SVG
+            </button>
+        </div>
+    </header>
+
+    <!-- ============ WORKSPACE ============ -->
+    <div class="workspace">
+
+        <!-- tool rail -->
+        <nav class="toolrail" id="toolrail">
+            <button class="tool" data-tool="select" title="Select">
+                <svg viewBox="0 0 24 24">
+                    <path d="M5 3l6 16 2.5-6.5L20 10 5 3z" />
+                </svg>
+                <span class="kbd">V</span>
+                <span class="tip">Select &amp; move<b>V</b></span>
+            </button>
+            <button class="tool active" data-tool="pen" title="Pen">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 19l7-7-4-4-7 7-1 5 5-1z" />
+                    <path d="M8 15l8-8" />
+                </svg>
+                <span class="kbd">P</span>
+                <span class="tip">Pen — click for corners, drag for curves<b>P</b></span>
+            </button>
+            <button class="tool" data-tool="pencil" title="Pencil">
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 20c3-1 4-5 8-9s7-6 7-6" />
+                    <path d="M15 5l4 4" />
+                </svg>
+                <span class="kbd">B</span>
+                <span class="tip">Pencil — freehand drawing<b>B</b></span>
+            </button>
+            <div class="railgap"></div>
+            <button class="tool" data-tool="pan" title="Pan">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 13V6a2 2 0 0 1 4 0v5" />
+                    <path d="M12 6a2 2 0 0 1 4 0v6" />
+                    <path d="M16 8a2 2 0 0 1 4 0v6a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-4l-2-4a1.8 1.8 0 0 1 3-2l1 1" />
+                </svg>
+                <span class="kbd">H</span>
+                <span class="tip">Pan the canvas<b>H</b></span>
+            </button>
+        </nav>
+
+        <!-- canvas -->
+        <div class="canvas-wrap" id="canvasWrap">
+            <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="empty" id="empty">
+                <div class="dropzone" id="dropzone">
+                    <div class="ico">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="3" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <path d="m21 15-5-5L5 21" />
+                        </svg>
+                    </div>
+                    <div class="big">Drop an image to trace</div>
+                    <div class="sub">Upload a photo, logo, or sketch. Then use the <b>Pen</b> or <b>Pencil</b> to trace
+                        over it and export clean vector paths as an SVG file.</div>
+                    <button class="btn primary" id="dropUpload" style="margin:0 auto">Choose image</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- properties -->
+        <aside class="panel">
+            <div class="sect">
+                <h3>Path style</h3>
+                <div class="row">
+                    <label>Stroke</label>
+                    <div class="swatch"><input type="color" id="strokeColor" value="#1b1e27"></div>
+                    <input class="hex" id="strokeHex" value="#1B1E27" maxlength="7">
+                </div>
+                <div class="row">
+                    <label>Width</label>
+                    <input type="range" id="strokeWidth" min="0" max="30" step="0.5" value="2">
+                    <span class="val" id="strokeWidthVal">2</span>
+                </div>
+                <div class="row">
+                    <label>Fill</label>
+                    <div class="toggle" id="fillToggle"></div>
+                    <div class="swatch" id="fillSwatch" style="opacity:.4;pointer-events:none"><input type="color"
+                            id="fillColor" value="#3dd7c0"></div>
+                    <input class="hex" id="fillHex" value="#3DD7C0" maxlength="7"
+                        style="opacity:.4;pointer-events:none">
+                </div>
+                <div class="row">
+                    <label>Close path</label>
+                    <div class="toggle" id="closeToggle"></div>
+                    <span class="val" style="flex:1;text-align:left;color:var(--faint)">auto-join ends</span>
+                </div>
+            </div>
+
+            <div class="sect">
+                <h3>Reference image</h3>
+                <div class="row">
+                    <label>Opacity</label>
+                    <input type="range" id="imgOpacity" min="0" max="100" step="1" value="55">
+                    <span class="val" id="imgOpacityVal">55%</span>
+                </div>
+                <div class="row">
+                    <label>Visible</label>
+                    <div class="toggle on" id="imgToggle"></div>
+                    <span class="val" style="flex:1;text-align:left;color:var(--faint)">show underlay</span>
+                </div>
+                <div class="hintline">The reference is a guide only — it is never included in the exported SVG.</div>
+            </div>
+
+            <div class="sect" style="flex:1">
+                <h3>Paths <span class="count" id="pathCount">0</span></h3>
+                <div class="layers" id="layers">
+                    <div class="empty-layers">No paths yet.<br>Pick the Pen and start clicking on the canvas.</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:12px">
+                    <button class="link" id="clearBtn">Clear all</button>
+                    <button class="link" id="helpBtn">Shortcuts</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ============ STATUS BAR ============ -->
+    <footer class="statusbar">
+        <div class="stat"><span class="k">tool</span><span class="accent" id="stTool">pen</span></div>
+        <div class="stat"><span class="k">x</span><span id="stX">—</span><span class="k">y</span><span id="stY">—</span>
+        </div>
+        <div class="stat" id="stMsg" style="color:var(--faint)">Click to place anchor points · drag to pull curve
+            handles</div>
+        <div class="stat right">
+            <button class="zoombtn" id="zoomOut"><svg viewBox="0 0 24 24">
+                    <path d="M5 12h14" />
+                </svg></button>
+            <span id="stZoom" style="min-width:42px;text-align:center">100%</span>
+            <button class="zoombtn" id="zoomIn"><svg viewBox="0 0 24 24">
+                    <path d="M12 5v14M5 12h14" />
+                </svg></button>
+            <button class="zoombtn" id="zoomFit" title="Fit to screen (0)"><svg viewBox="0 0 24 24">
+                    <path
+                        d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" />
+                </svg></button>
+        </div>
+    </footer>
+
+    <input type="file" id="fileInput" accept="image/*" hidden>
+    <div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "Traceboard — image to SVG",
+  "short_name": "Traceboard",
+  "description": "Trace an image into clean vector paths with a pen and pencil tool, and export it as SVG.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16181f",
+  "theme_color": "#16181f",
+  "orientation": "any",
+  "icons": [
+    { "src": "assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
