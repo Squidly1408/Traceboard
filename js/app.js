@@ -744,6 +744,29 @@
             clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
         }
 
+        // ---------------- install as app (PWA) ----------------
+        // hidden unless the browser tells us it's actually installable (Chrome/Edge
+        // etc. — Safari/iOS never fires this, so the button just stays hidden there)
+        let deferredInstallPrompt = null;
+        const installBtn = $("installBtn");
+        const alreadyInstalled = () =>
+            window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+        if (alreadyInstalled()) installBtn.hidden = true;
+        window.addEventListener("beforeinstallprompt", e => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (!alreadyInstalled()) installBtn.hidden = false;
+        });
+        installBtn.addEventListener("click", async () => {
+            if (!deferredInstallPrompt) return;
+            installBtn.hidden = true;
+            deferredInstallPrompt.prompt();
+            const choice = await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            if (choice.outcome !== "accepted") installBtn.hidden = false;
+        });
+        window.addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Traceboard installed"); });
+
         // ---------------- init ----------------
         buildStage(); fitView(); syncStyleUI(); setTool("pen");
     

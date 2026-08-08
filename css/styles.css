@@ -26,20 +26,26 @@
             padding: 0
         }
 
-        html,
-        body {
+        html {
             height: 100%
         }
 
         body {
+            min-height: 100%;
             background: var(--bg);
             color: var(--text);
             font-family: var(--ui);
             font-size: 13px;
-            overflow: hidden;
             -webkit-font-smoothing: antialiased;
+        }
+
+        /* the app itself fills exactly one screen; SEO/landing content scrolls in below it */
+        .app-shell {
+            height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         button {
@@ -794,6 +800,141 @@
 
             .brand .name {
                 display: none
+            }
+        }
+
+        /* the .btn rule above has the same specificity as the browser's default
+           [hidden] rule and comes later, so it would win and show the button
+           unless we say so explicitly */
+        .btn[hidden] {
+            display: none
+        }
+
+        /* ---------- Landing / SEO content (below the app) ---------- */
+        .landing {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 72px 24px 40px;
+        }
+
+        .landing h2 {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 26px;
+            letter-spacing: -.01em;
+            line-height: 1.3;
+        }
+
+        .landing h3 {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 6px;
+        }
+
+        .landing p {
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .landing section {
+            margin-bottom: 64px;
+        }
+
+        .landing-hero {
+            text-align: center;
+        }
+
+        .landing-hero h2 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .landing-hero p {
+            max-width: 620px;
+            margin: 0 auto 24px;
+            font-size: 15px;
+        }
+
+        .landing-hero .btn {
+            display: inline-flex;
+            text-decoration: none;
+        }
+
+        .landing-features h2,
+        .landing-steps h2,
+        .landing-faq h2 {
+            margin-bottom: 24px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            list-style: none;
+        }
+
+        .feature-grid li {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .landing-steps ol {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-left: 22px;
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .landing-steps strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .landing-faq details {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+        }
+
+        .landing-faq summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            list-style: revert;
+        }
+
+        .landing-faq details p {
+            margin-top: 10px;
+        }
+
+        .landing-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            text-align: center;
+            color: var(--faint);
+            font-size: 12.5px;
+        }
+
+        .landing-footer a {
+            color: var(--accent);
+        }
+
+        @media (max-width:720px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-hero h2 {
+                font-size: 24px
             }
         }
     
